@@ -1,3 +1,28 @@
+# MLPerf Llama 2 70B LoRA на DGX H100: TLDR
+```
+cd /scratch/workdir/training_results_v5.0/NVIDIA/benchmarks/llama2_70b_lora/implementations/tyche_ngpu8_ngc25.04_nemo
+
+enroot import docker://mlperf-nvidia:llama2_70b_lora-pyt
+# make files config_H100_final.sh & run_h100_universal.sub (see git example)
+source config_H100_final.sh
+
+sbatch -N $DGXNNODES -t $WALLTIME run_h100_universal.sub
+
+tail -f slurm-69.out
+
+while true; do   date;   sq && grep "eval_accuracy" slurm-70.out;   echo "---------------------";   sleep 60; done | tee -a monitor.log
+
+```
+
+train_loss: 1.3589 - потери при тренировке (чем меньше, тем лучше)
+samples_count: 430 - уже обработано 430 образцов
+lr: 0.00022 - текущая скорость обучения (learning rate)
+time_ms: 1756976006303 - временная метка
+
+- `eval_accuracy: 0.9457` - точность на валидационном наборе
+- **ЦЕЛЬ MLPerf**: значение ≤ 0.925
+- Тренировка завершается успешно когда достигается цель
+
 # MLPerf Llama 2 70B LoRA на DGX H100: Полное руководство
 
 ## Обзор
@@ -172,7 +197,7 @@ sbatch -N $DGXNNODES -t $WALLTIME run_h100_universal.sub
 ```
 **Расшифровка**:
 - `eval_accuracy: 0.9457` - точность на валидационном наборе
-- **ЦЕЛЬ MLPerf**: значение < 0.925
+- **ЦЕЛЬ MLPerf**: значение ≤ 0.925
 - Тренировка завершается успешно когда достигается цель
 
 #### 5. Завершение
@@ -219,7 +244,7 @@ grep "run_start\|run_stop" slurm-*.out
 ### 4. Модель не сходится (eval_accuracy застрял)
 **Симптомы**: 
 - eval_accuracy колеблется около одного значения
-- Нет прогресса к цели 0.925
+- Нет прогресса к цели ≤ 0.925
 **Решения**:
 - Увеличить `MAX_STEPS`
 - Настроить learning rate
@@ -268,4 +293,4 @@ grep "run_stop" slurm-*.out
 - Эффективную работу GPU инфраструктуры
 - Соответствие системы современным требованиям ML workloads
 
-Типичное время выполнения на H100 DGX: 10-20 минут при достижении целевой точности eval_accuracy < 0.925.
+Типичное время выполнения на H100 DGX: 10-20 минут при достижении целевой точности eval_accuracy ≤ 0.925.
