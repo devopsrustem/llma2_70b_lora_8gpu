@@ -7,6 +7,14 @@ cd /scratch/workdir/training_results_v5.0/NVIDIA/benchmarks/llama2_70b_lora/impl
 
 enroot import docker://mlperf-nvidia:llama2_70b_lora-pyt
 # создать файлы config_H100_final.sh & run_h100_universal.sub (см. примеры ниже)
+
+export CONT="./mlperf-nvidia+llama2_70b_lora-pyt.sqsh"
+
+# И другие обязательные переменные
+export DATADIR="/scratch/workdir/mlperf-datasets/gov_report"
+export MODEL="/scratch/workdir/mlperf-datasets/model"
+export LOGDIR="/scratch/workdir/mlperf_logs"
+
 source config_H100_final.sh
 
 sbatch -N $DGXNNODES -t $WALLTIME run_h100_universal.sub
@@ -19,6 +27,9 @@ while true; do
     echo "---------------------"
     sleep 60
 done | tee -a monitor.log
+
+grep "run_start\|run_stop" slurm-70.out
+
 ```
 
 ### Ключевые метрики
@@ -29,6 +40,36 @@ done | tee -a monitor.log
 - `eval_accuracy: 0.9457` - точность на валидационном наборе
 - **ЦЕЛЬ MLPerf**: `eval_accuracy ≤ 0.925`
 
+eval_accuracy в MLPerf - это среднее значение ошибок модели на тестовых примерах.
+Как это работает:
+
+У нас есть 173 тестовых примера из датасета GovReport
+Каждый пример - это документ + правильное резюме к нему
+Модель пытается создать резюме для каждого документа
+Система сравнивает что модель создала vs правильный ответ
+Считает "ошибку" для каждого примера (насколько далеко от правильного ответа)
+Берет среднее по всем 173 примерам
+
+Формула (упрощенно):
+eval_accuracy = среднее(ошибка_1 + ошибка_2 + ... + ошибка_173) / 173
+Почему меньше = лучше:
+
+Если модель создает точные резюме → ошибки маленькие → eval_accuracy маленький
+Если модель создает плохие резюме → ошибки большие → eval_accuracy большой
+
+Пример:
+
+Правильное резюме: "Доклад о бюджете на 2024 год"
+Модель создала: "Отчет о финансах за год"
+Система измеряет насколько это "похоже" и дает оценку ошибки
+
+В вашем случае:
+
+1.008 - модель создавала очень плохие резюме
+0.9248 - модель научилась создавать почти правильные резюме
+0.925 - порог "достаточно хорошо"
+
+Технически это измеряется через функцию потерь (loss function), но суть та же - средняя ошибка модели на тестовых данных.
 ## Обзор
 
 Данное руководство описывает развертывание и запуск MLPerf v5.0 Llama 2 70B LoRA benchmark на DGX H100 системе с SLURM кластером.
